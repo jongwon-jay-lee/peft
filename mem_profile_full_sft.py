@@ -119,9 +119,6 @@ def main():
                         print("2. after forward pass")
                         print(torch.cuda.memory_allocated(device))
 
-                    if torch.cuda.is_available():
-                        print(torch.cuda.memory_snapshot())
-
                     profiling_test_done = True
                     loss = outputs.loss
                     total_loss += loss.detach().float()
