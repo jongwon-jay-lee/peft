@@ -16,8 +16,8 @@ if torch.cuda.is_available():
     device = torch.cuda.current_device()
 else:
     device = "cpu"
-model_name_or_path = "bigscience/mt0-base"
-tokenizer_name_or_path = "bigscience/mt0-base"
+model_name_or_path = "bigscience/mt0-small"
+tokenizer_name_or_path = "bigscience/mt0-small"
 checkpoint_name = "financial_sentiment_analysis_lora_v1.pt"
 text_column = "sentence"
 label_column = "text_label"
