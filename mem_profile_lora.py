@@ -10,7 +10,12 @@ from transformers import default_data_collator, get_linear_schedule_with_warmup
 import torch.autograd.profiler as profiler
 
 
-device = "cpu"
+torch.distributed.init_process_group("nccl")
+
+if torch.cuda.is_available():
+    device = torch.cuda.current_device()
+else:
+    device = "cpu"
 model_name_or_path = "bigscience/mt0-base"
 tokenizer_name_or_path = "bigscience/mt0-base"
 checkpoint_name = "financial_sentiment_analysis_lora_v1.pt"
@@ -82,6 +87,10 @@ def main():
     profiling_test_done = False
 
     model = model.to(device)
+    if torch.cuda.is_available() and torch.distributed.get_rank() == 0:
+        print("1. model init")
+        print(torch.cuda.memory_allocated(device))
+
     for epoch in range(num_epochs):
         if profiling_test_done:
             break
@@ -112,19 +121,33 @@ def main():
                 ) as p:
 
                     outputs = model(**batch)
+                    if torch.cuda.is_available() and torch.distributed.get_rank() == 0:
+                        print("2. after forward pass")
+                        print(torch.cuda.memory_allocated(device))
+                        # print(torch.cuda.memory_stats(device))
+                        # print(torch.cuda.memory_snapshot())
 
-                    if torch.cuda.is_available():
-                        print(torch.cuda.memory_snapshot())
-                    
                     profiling_test_done = True
-                    if profiling_test_done:
-                        break
                     loss = outputs.loss
                     total_loss += loss.detach().float()
                     loss.backward()
+                    if torch.cuda.is_available() and torch.distributed.get_rank() == 0:
+                        print("3. after backward pass")
+                        print(torch.cuda.memory_allocated(device))
+
                     optimizer.step()
+                    if torch.cuda.is_available() and torch.distributed.get_rank() == 0:
+                        print("4. after optimizer pass")
+                        print(torch.cuda.memory_allocated(device))
+
                     lr_scheduler.step()
                     optimizer.zero_grad()
+                    if torch.cuda.is_available() and torch.distributed.get_rank() == 0:
+                        print("5. after zero_grad pass")
+                        print(torch.cuda.memory_allocated(device))
+
+                    if profiling_test_done:
+                        break
 
         if not profiling_test_done:
             model.eval()
@@ -146,7 +169,7 @@ def main():
             train_ppl = torch.exp(train_epoch_loss)
             print(f"{epoch=}: {train_ppl=} {train_epoch_loss=} {eval_ppl=} {eval_epoch_loss=}")
 
-    print(p.key_averages().table(sort_by="self_cpu_memory_usage"))
+    # print(p.key_averages().table(sort_by="self_cpu_memory_usage"))
 
 
 if __name__ == "__main__":
