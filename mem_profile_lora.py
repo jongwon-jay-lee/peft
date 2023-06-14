@@ -136,11 +136,11 @@ def main():
                         print(torch.cuda.memory_allocated(device))
 
                     optimizer.step()
+                    lr_scheduler.step()
                     if torch.cuda.is_available() and torch.distributed.get_rank() == 0:
                         print("4. after optimizer pass")
                         print(torch.cuda.memory_allocated(device))
 
-                    lr_scheduler.step()
                     optimizer.zero_grad()
                     if torch.cuda.is_available() and torch.distributed.get_rank() == 0:
                         print("5. after zero_grad pass")
